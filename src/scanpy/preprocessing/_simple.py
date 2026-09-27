@@ -504,8 +504,10 @@ def numpy_regress_out(
 
     Finding coefficient using Linear regression (Linear Least Squares).
     """
-    inv_gram_matrix = np.linalg.inv(regressor.T @ regressor)
-    coeff = inv_gram_matrix @ (regressor.T @ data)
+    # Solving the normal equations squares the condition number of the design.
+    # Use a least-squares solver directly so nearly collinear regressors do not
+    # produce inaccurate coefficients and residuals.
+    coeff = np.linalg.lstsq(regressor, data, rcond=None)[0]
     data = get_resid(data, regressor, coeff)
     return data
 

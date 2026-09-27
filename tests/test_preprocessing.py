@@ -489,6 +489,26 @@ def test_regress_out_constants():
     assert_equal(adata, adata_copy)
 
 
+def test_regress_out_ill_conditioned_ordinal():
+    rng = np.random.default_rng(0)
+    n_obs, n_vars = 2000, 20
+    data = rng.random((n_obs, n_vars))
+    n_counts = rng.lognormal(8, 0.4, n_obs)
+    n_counts /= n_counts.max()
+    percent_mito = 2.0 + 1e-7 * rng.random(n_obs)
+    design = np.column_stack((np.ones(n_obs), n_counts, percent_mito))
+
+    adata = AnnData(
+        data.copy(),
+        obs={"n_counts": n_counts, "percent_mito": percent_mito},
+    )
+    sc.pp.regress_out(adata, keys=["n_counts", "percent_mito"])
+
+    expected = data - design @ np.linalg.lstsq(design, data, rcond=None)[0]
+    assert np.linalg.cond(design) > 1e7
+    np.testing.assert_allclose(adata.X, expected, rtol=1e-7, atol=1e-7)
+
+
 @pytest.mark.parametrize(
     ("keys", "test_file", "atol"),
     [
